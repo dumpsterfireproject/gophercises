@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 type Results struct {
@@ -29,13 +30,15 @@ func (r *Results) CountCorrectAnswer() {
 }
 
 func main() {
-	fileName := "problems.csv"
-	flag.StringVar(&fileName, "csv", "problems.csv", "a csv file in the format of 'question,answer'")
+	var fileName string
+	var timeLimit int
+	flag.StringVar(&fileName, "csv", "problems.csv", "a csv file in the format of 'question,answer' (default problems.csv)")
+	flag.IntVar(&timeLimit, "limit", 30, "the time limit for the quiz in seconds (default 30)")
 	flag.Parse()
-	readCsv(fileName)
+	readCsv(fileName, timeLimit)
 }
 
-func readCsv(fileName string) {
+func readCsv(fileName string, timeLimit int) {
 	f, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
@@ -43,6 +46,14 @@ func readCsv(fileName string) {
 	defer f.Close()
 	results := InitResults()
 	csvReader := csv.NewReader(f)
+	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
+	fmt.Println("Press enter to start quiz")
+	getAnswer()
+	go func() {
+		<-timer.C
+		printResults(results)
+		os.Exit(0)
+	}()
 	// can use csvReader.ReadAll() to return ([][]string,error)
 	// can use csvReader.Comma to set different delimiter
 	for {
@@ -60,10 +71,14 @@ func readCsv(fileName string) {
 			results.CountCorrectAnswer()
 		}
 	}
-	fmt.Printf("You scored %d out of %d.", results.Correct, results.Total)
+	printResults(results)
 }
 
 func getAnswer() (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 	return reader.ReadString('\n')
+}
+
+func printResults(results *Results) {
+	fmt.Printf("You scored %d out of %d.\n", results.Correct, results.Total)
 }
