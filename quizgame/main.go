@@ -41,7 +41,8 @@ func main() {
 func readCsv(fileName string, timeLimit int) {
 	f, err := os.Open(fileName)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Could not open file %s\nError: %v\n", fileName, err)
+		os.Exit(1)
 	}
 	defer f.Close()
 	results := InitResults()
@@ -49,11 +50,6 @@ func readCsv(fileName string, timeLimit int) {
 	timer := time.NewTimer(time.Duration(timeLimit) * time.Second)
 	fmt.Println("Press enter to start quiz")
 	getAnswer()
-	go func() {
-		<-timer.C
-		printResults(results)
-		os.Exit(0)
-	}()
 	// can use csvReader.ReadAll() to return ([][]string,error)
 	// can use csvReader.Comma to set different delimiter
 	for {
@@ -66,9 +62,20 @@ func readCsv(fileName string, timeLimit int) {
 		}
 		results.CountQuestion()
 		fmt.Printf("Problem #%d: %s = ", results.Total, rec[0])
-		answer, _ := getAnswer()
-		if strings.TrimSpace(answer) == rec[1] {
-			results.CountCorrectAnswer()
+		answerChannel := make(chan string)
+		go func() {
+			answer, _ := getAnswer()
+			answerChannel <- answer
+		}()
+		select {
+		case <-timer.C:
+			fmt.Println()
+			printResults(results)
+			return
+		case answer := <-answerChannel:
+			if strings.TrimSpace(answer) == rec[1] {
+				results.CountCorrectAnswer()
+			}
 		}
 	}
 	printResults(results)
