@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+// See https://golang.cafe/blog/golang-functional-options-pattern.html
+// https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
+
 type Option struct {
 	Text string `json:"text"`
 	Arc  string `json:"arc"`
@@ -93,7 +96,6 @@ func readStory(reader io.Reader) (Story, error) {
 func StoryHandler(story Story, fallback http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		path := strings.Trim(request.URL.Path, "/")
-		// TODO: better default
 		if path == "" {
 			path = "intro"
 		}
@@ -112,5 +114,6 @@ func defaultMux() *http.ServeMux {
 }
 
 func hello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello, world!")
+	w.WriteHeader(http.StatusNotFound)
+	fmt.Fprintln(w, "This story has taken an unexpected turn!")
 }
